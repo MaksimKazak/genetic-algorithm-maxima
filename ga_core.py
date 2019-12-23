@@ -75,11 +75,11 @@ class Chromosome:
 class GACore:
     MUTATION_RATE = 0.05
     POPULATION = 100
-    ELITISM_RATE = 0.1
-    BEST_PARENTS = round(POPULATION * ELITISM_RATE)
-    MAX_COUNTS = 25
+
     TOURNAMENT_AMOUNT = 10
     CHILDREN_AMOUNT = 20
+
+    MAX_ITERATIONS = 25
     
     def __init__(self, func):
         self.func = func
@@ -93,7 +93,7 @@ class GACore:
         best_one = self.best_descendant
 		
         counter = 0
-        while counter < GACore.MAX_COUNTS:
+        while counter < GACore.MAX_ITERATIONS:
             selected = self._tournament_select()
             new_generation = self._cross_over(selected)
             self._mutate(new_generation, min_value, max_value)
@@ -135,9 +135,6 @@ class GACore:
         bit_pos1 = random.randint(1, Chromosome.BIT_LEN - 2)
         bit_pos2 = random.randint(bit_pos1, Chromosome.BIT_LEN - 1)
         return chrm2.combine(chrm1, [bit_pos1, bit_pos2])
-
-    def _best_parents(self):
-        return sorted(self.generation, key=lambda chrm: chrm.fitness, reverse = True)[0:GACore.BEST_PARENTS]
 
     def _mutate(self, generation, min_value, max_value):
         if random.random() < GACore.MUTATION_RATE:
