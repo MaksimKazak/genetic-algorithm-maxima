@@ -7,8 +7,8 @@ def run_test(func_name, expected, func, min_arg, max_arg):
     result = tester.find_extremum(min_arg, max_arg)
     print("{0} for [{1}, {2}]".format(func_name, min_arg, max_arg))
     print("Expected: {0}".format(expected))
-    print("Real x: {0}".format(str(result)))
-    print("Real y".format(func(result)))
+    print("Result x: {0}".format(str(result)))
+    print("Result y: {0}".format(func(result)))
     print()
 
 # Test suit

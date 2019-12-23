@@ -33,27 +33,21 @@ class Chromosome:
         limited = self.code * limits_interval / (Chromosome.MAX_VALUE + 1) + self.min_limit
         return limited
 
-    def combine(self, other, dots):
+    def combine(self, other, bit_positions):
         '''print("Given: {0}, {1}".format(self, other));'''
-        if not len(dots):
-            raise ValueError("'dots' should contain 1 or more dots")
 
-        dot_lst = sorted(dots)
-        dot_idx = 0
         curr_chrm = self
         next_chrm = other
         new_code = 0
         
         new_code = curr_chrm.code
 
-        while dot_idx < len(dot_lst):
-            pos_in_code = dot_lst[dot_idx] % Chromosome.BIT_LEN
-            self.combineCode(next_chrm, pos_in_code)
-			
+        for index in range(len(bit_positions)):
+            bit_pos = bit_positions[index]
+            curr_chrm.combineCode(next_chrm, bit_pos)
             curr_chrm, next_chrm = next_chrm, curr_chrm
-            dot_idx += 1
         '''print("Combined: {0}".format(self));'''
-        return Chromosome(self.min_limit, self.max_limit, code = new_code)
+        return Chromosome(curr_chrm.min_limit, curr_chrm.max_limit, new_code)
 					  
     def combineCode(self, other, bit_pos):
         '''bit_pos is position starting from left'''
@@ -79,15 +73,11 @@ class Chromosome:
 
 
 class GACore:
-    '''
-    Genetic algorithm runner. Works with specified function and
-    specified number of function arguments (number of genes).
-    '''
     MUTATION_RATE = 0.05
     POPULATION = 100
     ELITISM_RATE = 0.1
     BEST_PARENTS = round(POPULATION * ELITISM_RATE)
-    MAX_COUNTS = 5
+    MAX_COUNTS = 25
     
     def __init__(self, func):
         self.func = func
@@ -96,16 +86,15 @@ class GACore:
 
     def find_extremum(self, min_value, max_value):
         self._create_new_generation(min_value, max_value)
-        self.best_descendant = self.generation[random.randint(0, GACore.POPULATION - 1)]
         self._count_and_set_population_fitness(self.generation)
-        counter = 0
+        self.best_descendant = sorted(self.generation, key=lambda chrm: chrm.fitness, reverse = True)[0]
         best_one = self.best_descendant
-
+		
+        counter = 0
         while counter < GACore.MAX_COUNTS:
             selected = self._tournament_select()
             new_generation = self._cross_over(selected)
             new_generation += self._best_parents()
-            self._mutate(new_generation, min_value, max_value)
             self._count_and_set_population_fitness(new_generation)
             best_one = sorted(new_generation, key=lambda chrm: chrm.fitness, reverse = True)[0]
             if best_one.fitness > self.best_descendant.fitness:
@@ -113,6 +102,7 @@ class GACore:
                 counter = 0
             else:
                 counter += 1
+            self._mutate(new_generation, min_value, max_value)
             self.generation = new_generation
             
         return self.best_descendant.get_limited_values()
@@ -123,24 +113,12 @@ class GACore:
         for i in range(GACore.POPULATION):
             self.generation.append(Chromosome(min_val, max_val))
 
-    def _count_and_set_fitness(self, chrm):
-        chrm.fitness = self.func(chrm.get_limited_values())
-
-    def _count_and_set_population_fitness(self, generation):
-        for chrm in generation:
-            self._count_and_set_fitness(chrm)
-
     def _tournament_select(self):
         selected = []
         for i in range(GACore.POPULATION):
             applicants = (random.choice(self.generation) for i in range(2))
-            selected.append(min(applicants, key=lambda chrm: chrm.fitness))
+            selected.append(max(applicants, key=lambda chrm: chrm.fitness))
         return selected
-
-    def _combine_randomly(self, chrm1, chrm2):
-        point1 = random.randint(1, Chromosome.BIT_LEN - 2)
-        point2 = random.randint(point1, Chromosome.BIT_LEN - 1)
-        return chrm2.combine(chrm1, [point1, point2])
 
     def _cross_over(self, selected):
         new_generation = []
@@ -149,14 +127,27 @@ class GACore:
             mother = random.choice(selected)
             new_generation.append(self._combine_randomly(father, mother))
         return new_generation
+		
+    def _combine_randomly(self, chrm1, chrm2):
+        bit_pos1 = random.randint(1, Chromosome.BIT_LEN - 2)
+        bit_pos2 = random.randint(bit_pos1, Chromosome.BIT_LEN - 1)
+        return chrm2.combine(chrm1, [bit_pos1, bit_pos2])
 
     def _best_parents(self):
         return sorted(self.generation, key=lambda chrm: chrm.fitness, reverse = True)[0:GACore.BEST_PARENTS]
 
-    def _mutate(self, new_generation, min_value, max_value):
+    def _mutate(self, generation, min_value, max_value):
         if random.random() < GACore.MUTATION_RATE:
             chrm_idx = random.randint(0, GACore.POPULATION - 1)
             mutagen = Chromosome(min_value, max_value)
-            mutant = self._combine_randomly(self.generation[chrm_idx], mutagen)
-            self.generation[chrm_idx] = mutant
-            
+            mutant = self._combine_randomly(generation[chrm_idx], mutagen)
+            self._count_and_set_fitness(mutant)
+            generation[chrm_idx] = mutant
+			
+			
+    def _count_and_set_fitness(self, chrm):
+        chrm.fitness = self.func(chrm.get_limited_values())
+
+    def _count_and_set_population_fitness(self, generation):
+        for chrm in generation:
+            self._count_and_set_fitness(chrm)
