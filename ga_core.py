@@ -78,6 +78,8 @@ class GACore:
     ELITISM_RATE = 0.1
     BEST_PARENTS = round(POPULATION * ELITISM_RATE)
     MAX_COUNTS = 25
+    TOURNAMENT_AMOUNT = 10
+    CHILDREN_AMOUNT = 20
     
     def __init__(self, func):
         self.func = func
@@ -94,7 +96,8 @@ class GACore:
         while counter < GACore.MAX_COUNTS:
             selected = self._tournament_select()
             new_generation = self._cross_over(selected)
-            new_generation += self._best_parents()
+            self._mutate(new_generation, min_value, max_value)
+            new_generation += self.generation
             self._count_and_set_population_fitness(new_generation)
             best_one = sorted(new_generation, key=lambda chrm: chrm.fitness, reverse = True)[0]
             if best_one.fitness > self.best_descendant.fitness:
@@ -102,9 +105,9 @@ class GACore:
                 counter = 0
             else:
                 counter += 1
-            self._mutate(new_generation, min_value, max_value)
             self.generation = new_generation
-            
+
+        #print(len(self.generation))
         return self.best_descendant.get_limited_values()
         
 
@@ -115,14 +118,14 @@ class GACore:
 
     def _tournament_select(self):
         selected = []
-        for i in range(GACore.POPULATION):
+        for i in range(GACore.TOURNAMENT_AMOUNT):
             applicants = (random.choice(self.generation) for i in range(2))
             selected.append(max(applicants, key=lambda chrm: chrm.fitness))
         return selected
 
     def _cross_over(self, selected):
         new_generation = []
-        for i in range(GACore.POPULATION - GACore.BEST_PARENTS):
+        for i in range(GACore.CHILDREN_AMOUNT):
             father = random.choice(selected)
             mother = random.choice(selected)
             new_generation.append(self._combine_randomly(father, mother))
@@ -138,7 +141,7 @@ class GACore:
 
     def _mutate(self, generation, min_value, max_value):
         if random.random() < GACore.MUTATION_RATE:
-            chrm_idx = random.randint(0, GACore.POPULATION - 1)
+            chrm_idx = random.randint(0, len(generation) - 1)
             mutagen = Chromosome(min_value, max_value)
             mutant = self._combine_randomly(generation[chrm_idx], mutagen)
             self._count_and_set_fitness(mutant)
